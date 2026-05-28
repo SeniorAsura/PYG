@@ -1,1 +1,3 @@
-
+providers = ["python"]
+[start]
+cmd = "PYG/bot.py"
