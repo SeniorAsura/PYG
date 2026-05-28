@@ -135,7 +135,7 @@ async def on_ready():
     await bot.tree.sync()
     await bot.change_presence(
         status=discord.Status.online,
-        activity=discord.CustomActivity(name="🏆 PYG Clan Rivals | UP & Running")
+        activity=discord.Activity(type=discord.ActivityType.playing, name="🏆 PYG Clan Rivals | UP & Running")
     )
     print(f"✅ {bot.user} is online!")
     print("Slash commands synced.")
