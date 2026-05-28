@@ -83,11 +83,12 @@ class RobloxConfirmView(View):
             return
         await interaction.response.defer(ephemeral=True)
         data = load_data()
+        pending = data.get("pending", {})
         user_id_str = str(interaction.user.id)
-        if user_id_str not in data.get("pending", {}):
+        if user_id_str not in pending:
             await interaction.followup.send("❌ No pending verification found. Run `/register` again.", ephemeral=True)
             return
-        entry = data["pending"][user_id_str]
+        entry = pending[user_id_str]
         roblox_id = entry["roblox_id"]
         code = entry["code"]
         roblox_username = entry["roblox_username"]
@@ -111,7 +112,9 @@ class RobloxConfirmView(View):
         roles_to_add = [r for r in [verified_role, member_role] if r and r not in interaction.user.roles]
         if roles_to_add:
             await interaction.user.add_roles(*roles_to_add)
-        await interaction.followup.send(f"✅ **Roblox account verified!**\nLinked to: **{roblox_username}** (ID: `{roblox_id}`)\nWelcome to PYG Clan! 🎮", ephemeral=True)
+        await interaction.followup.send(
+            f"✅ **Roblox account verified!**\nLinked to: **{roblox_username}** (ID: `{roblox_id}`)\nWelcome to PYG Clan! 🎮",
+            ephemeral=True)
         embed = discord.Embed(title="🎉 New Member Verified!", description=f"{interaction.user.mention} just verified their Roblox account as **{roblox_username}**!", color=0x8A2BE2)
         await interaction.channel.send(embed=embed)
 
@@ -130,8 +133,12 @@ class RobloxConfirmView(View):
 async def on_ready():
     bot.add_view(VerifyView())
     await bot.tree.sync()
-    await bot.change_presence(activity=discord.Game("PYG Clan • Rivals"))
+    await bot.change_presence(
+        status=discord.Status.online,
+        activity=discord.CustomActivity(name="🏆 PYG Clan Rivals | UP & Running")
+    )
     print(f"✅ {bot.user} is online!")
+    print("Slash commands synced.")
 
 @bot.event
 async def on_member_join(member):
