@@ -279,4 +279,111 @@ async def on_command_error(ctx, error):
     elif not isinstance(error, commands.CommandNotFound):
         raise error
 
+
+
+# ================= UPGRADE FEATURES =================
+from datetime import datetime, timedelta
+
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    data = load_data()
+    data.setdefault("xp", {})
+    data.setdefault("coins", {})
+    uid = str(message.author.id)
+
+    data["xp"][uid] = data["xp"].get(uid, 0) + 5
+    data["coins"][uid] = data["coins"].get(uid, 0) + 1
+
+    save_data(data)
+    await bot.process_commands(message)
+
+@bot.tree.command(name="level")
+async def level(interaction: discord.Interaction):
+    data = load_data()
+    xp = data.get("xp", {}).get(str(interaction.user.id), 0)
+    level = xp // 100
+    await interaction.response.send_message(f"🏅 Level: {level} | XP: {xp}")
+
+@bot.tree.command(name="leaderboard")
+async def leaderboard(interaction: discord.Interaction):
+    data = load_data()
+    xp_data = data.get("xp", {})
+    top = sorted(xp_data.items(), key=lambda x: x[1], reverse=True)[:10]
+    msg = "\\n".join([f"{i+1}. <@{uid}> - {xp} XP" for i,(uid,xp) in enumerate(top)])
+    await interaction.response.send_message(f"🏆 Leaderboard\\n\\n{msg or 'No data'}")
+
+@bot.tree.command(name="daily")
+async def daily(interaction: discord.Interaction):
+    data = load_data()
+    data.setdefault("daily", {})
+    data.setdefault("coins", {})
+
+    uid = str(interaction.user.id)
+    now = datetime.utcnow()
+
+    if uid in data["daily"]:
+        last = datetime.fromisoformat(data["daily"][uid])
+        if now - last < timedelta(hours=24):
+            return await interaction.response.send_message(
+                "⏳ You already claimed your daily reward today.",
+                ephemeral=True
+            )
+
+    reward = random.randint(100, 500)
+    data["coins"][uid] = data["coins"].get(uid, 0) + reward
+    data["daily"][uid] = now.isoformat()
+    save_data(data)
+
+    await interaction.response.send_message(f"🎁 You received {reward} coins!")
+
+@bot.tree.command(name="coins")
+async def coins(interaction: discord.Interaction):
+    data = load_data()
+    amount = data.get("coins", {}).get(str(interaction.user.id), 0)
+    await interaction.response.send_message(f"💰 Coins: {amount}")
+
+@bot.tree.command(name="challenge")
+async def challenge(interaction: discord.Interaction):
+    challenges = [
+        "Win 3 matches in a row",
+        "Get 15 eliminations",
+        "Win using only melee",
+        "Carry your teammate",
+        "Get an MVP"
+    ]
+    await interaction.response.send_message(
+        f"🎯 Challenge: {random.choice(challenges)}"
+    )
+
+@bot.tree.command(name="serverstats")
+async def serverstats(interaction: discord.Interaction):
+    guild = interaction.guild
+    embed = discord.Embed(title="📊 Server Stats", color=0x8A2BE2)
+    embed.add_field(name="Members", value=str(guild.member_count))
+    embed.add_field(name="Roles", value=str(len(guild.roles)))
+    embed.add_field(name="Channels", value=str(len(guild.channels)))
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="apply")
+@app_commands.describe(rank="Your Roblox Rivals rank")
+async def apply(interaction: discord.Interaction, rank: str):
+    channel = discord.utils.get(interaction.guild.text_channels, name="clan-applications")
+
+    if not channel:
+        return await interaction.response.send_message(
+            "❌ clan-applications channel not found.",
+            ephemeral=True
+        )
+
+    embed = discord.Embed(title="📋 New Clan Application", color=0x8A2BE2)
+    embed.add_field(name="Applicant", value=interaction.user.mention, inline=False)
+    embed.add_field(name="Rank", value=rank, inline=False)
+
+    await channel.send(embed=embed)
+    await interaction.response.send_message("✅ Application submitted!", ephemeral=True)
+
+
 bot.run(TOKEN)
